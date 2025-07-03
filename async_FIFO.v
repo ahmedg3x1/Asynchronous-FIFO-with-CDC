@@ -1,6 +1,6 @@
 module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rdata, o_rempty);
-    parameter FIFO_DEPTH = 1;
-    parameter FIFO_WIDTH = 1;
+    parameter FIFO_DEPTH = 16;
+    parameter FIFO_WIDTH = 4;
 
     localparam PTR_WIDTH = $clog2(FIFO_DEPTH);
 
@@ -13,9 +13,9 @@ module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rda
     reg [FIFO_WIDTH-1:0] FIFO [0:FIFO_DEPTH-1];
     
     reg [PTR_WIDTH:0] w_ptr, r_ptr; // one extra bit to det. the overlap
-    wire [PTR_WIDTH:0]  w_ptr_syn_rclk, r_ptr_syn_wclk;
+    wire [PTR_WIDTH:0]  w_ptr_syn_rclk, r_ptr_syn_wclk; // synchronized ptr. to the dest. clk
 
-    // wclk Domain
+    // ======== wclk Domain ======== //
     always @(posedge i_wclk, negedge i_rst_n) begin
         if (~i_rst_n) begin
             w_ptr <= 0; 
@@ -29,7 +29,8 @@ module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rda
         end
     end
     
-    //syn. with binary to gray coverter
+    //double_ff synchronizer with binary to gray converter
+
     wire [PTR_WIDTH:0] r_ptr_gray, r_ptr_syn_wclk_gray;
 
     bin2gray #(PTR_WIDTH+1) b2g_i1 (r_ptr, r_ptr_gray);
@@ -38,11 +39,16 @@ module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rda
 
     gray2bin #(PTR_WIDTH+1) g2b_i1 (r_ptr_syn_wclk_gray, r_ptr_syn_wclk);
 
+
+
+
+    // full flag
     assign o_full = (w_ptr[PTR_WIDTH] != r_ptr_syn_wclk[PTR_WIDTH]) && (w_ptr[PTR_WIDTH-1:0] == r_ptr_syn_wclk[PTR_WIDTH-1:0]) ? 1'b1 : 1'b0; 
 
 
 
-    // rclk Domain
+    // ======== rclk Domain ======== //
+
     always @(posedge i_rclk, negedge i_rst_n) begin
         if (~i_rst_n) begin
             r_ptr <= 0; 
@@ -56,7 +62,7 @@ module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rda
         end
     end
 
-    //syn. with binary to gray coverter
+    //double_ff synchronizer with binary to gray coverter
     wire [PTR_WIDTH:0] w_ptr_gray, w_ptr_syn_rclk_gray;
 
     bin2gray #(PTR_WIDTH+1) b2g_i2 (w_ptr, w_ptr_gray);
@@ -65,6 +71,9 @@ module async_FIFO (i_rst_n, i_wclk, i_wen, i_wdata, o_full, i_rclk, i_ren, o_rda
 
     gray2bin #(PTR_WIDTH+1) g2b_i2 (w_ptr_syn_rclk_gray, w_ptr_syn_rclk);
 
+
+
+    //empty flag
     assign o_rempty = (r_ptr == w_ptr_syn_rclk) ? 1'b1 : 1'b0; 
 
 endmodule

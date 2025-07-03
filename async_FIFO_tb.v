@@ -27,11 +27,32 @@ module async_FIFO_tb;
     end
     
     initial begin
+
+        // reset assertion
         i_rst_n = 0;
         i_wen = 0;
         i_ren = 0;
         @(negedge i_wclk);
         i_rst_n = 1;
+
+        // test write operation and full flag
+        repeat(4000) begin
+            i_wen = 1;
+            i_ren = 0;
+            i_wdata = $random;
+            @(negedge i_wclk);
+        end
+
+        // test read operation and empty flag
+        repeat(4000) begin
+            i_wen = 0;
+            i_ren = 1;
+            i_wdata = $random;
+            @(negedge i_wclk);
+        end
+
+
+        // test simultaneous read and write
         repeat(2000) begin
             i_wen = $random;
             i_ren = $random;
@@ -39,12 +60,7 @@ module async_FIFO_tb;
             @(negedge i_wclk);
         end
 
-        repeat(4000) begin
-            i_wen = 0;
-            i_ren = $random;
-            i_wdata = $random;
-            @(negedge i_wclk);
-        end
+
         $stop;
     end
 endmodule
